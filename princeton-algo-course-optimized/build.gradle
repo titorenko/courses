@@ -1,0 +1,80 @@
+apply plugin: 'java'
+
+group = 'uk.org.titorenko'
+version = '0.0.1'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+
+apply plugin: "java"
+apply plugin: "eclipse"
+
+buildscript {
+    repositories {
+        maven {
+            name 'Shadow'
+            url 'http://dl.bintray.com/content/gvsmirnov/gradle-plugins'
+        }
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:0.8.1'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    perf
+}
+
+dependencies {
+	compile group: 'com.google.guava', name: 'guava', version: '17.0'
+	testCompile group: 'junit', name: 'junit', version: '4.11'
+	def jmhVersion = '0.9.2'
+    perfCompile project
+    perfCompile "org.openjdk.jmh:jmh-core:$jmhVersion"
+    perfCompile "org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion"
+}
+
+eclipse {
+    classpath {
+        plusConfigurations += [configurations.perfCompile]
+    }
+}
+
+eclipse.classpath.file {
+    whenMerged  { classpath ->
+        classpath.entries.removeAll { entry -> entry.kind == 'src' && entry.path.startsWith("/") }
+    }
+}
+
+task perfJar(type: Jar, dependsOn: perfClasses) {
+    from sourceSets.perf.output + sourceSets.main.output
+}
+
+task benchJar(dependsOn: perfJar) {
+
+    apply plugin: "shadow"
+
+    shadow {
+        classifier = "benchmarks"
+        includeDependenciesFor = ["runtime", "perfRuntime"]
+
+        transformer(com.github.jengelman.gradle.plugins.shadow.transformers.ManifestResourceTransformer) {
+            mainClass = "org.openjdk.jmh.Main"
+        }
+    }
+
+    doLast {
+        shadowJar.execute(
+)    }
+}
+
+task bench(type:Exec, dependsOn: benchJar) {
+	commandLine 'java', '-Xmx1g', '-XX:+AggressiveOpts', '-jar', "$buildDir.path/distributions/$rootProject.name-$version-benchmarks.jar"
+	if(project.hasProperty("jmh")){
+        args jmh
+    }
+}

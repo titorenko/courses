@@ -1,0 +1,43 @@
+apply plugin: 'java'
+
+group = 'uk.org.titorenko'
+version = '0.0.1'
+
+sourceCompatibility = JavaVersion.VERSION_1_7
+
+apply plugin: "java"
+apply plugin: "eclipse"
+
+//---------------------------------------------
+apply plugin: 'checkstyle'
+checkstyle {
+    sourceSets = [sourceSets.main]
+}
+
+checkstyleMain << {
+    ant.xslt(in: reports.xml.destination,
+		style: new File('config/checkstyle/checkstyle-noframes-sorted.xsl'),
+        out: new File(reports.xml.destination.parent, 'main.html'))
+}
+//---------------------------------------------
+apply plugin: 'findbugs'
+findbugs {
+ 	sourceSets = [sourceSets.main]
+ 	includeFilter = new File('config/findbugs/includeFilter.xml')
+}
+
+findbugsMain {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+//---------------------------------------------
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+	testCompile group: 'junit', name: 'junit', version: '4.11'
+}
